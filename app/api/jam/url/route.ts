@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     // Validate the input
     if (!body.jamLink || !body.jamLink.startsWith("https://spotify.link/")) {
       return NextResponse.json(
-        { error: "Invalid Spotify Jam link" },
+        { error: "Invalid Spotify Jam link", jamLink: body.jamLink },
         { status: 400 },
       );
     }
