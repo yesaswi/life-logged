@@ -1,20 +1,20 @@
 import Link from "next/link";
+
 import { formatDate, getBlogPosts } from "app/blog/utils";
 
-export function BlogPosts() {
-  let allBlogs = getBlogPosts();
+export async function BlogPosts() {
+  const allBlogs = await getBlogPosts();
 
   return (
     <div>
       {allBlogs
-        .sort((a, b) => {
-          if (
-            new Date(a.metadata.publishedAt) > new Date(b.metadata.publishedAt)
-          ) {
-            return -1;
-          }
-          return 1;
-        })
+
+        .sort(
+          (a, b) =>
+            new Date(b.metadata.publishedAt).getTime() -
+            new Date(a.metadata.publishedAt).getTime(),
+        )
+
         .map((post) => (
           <Link
             key={post.slug}
@@ -27,6 +27,11 @@ export function BlogPosts() {
               </p>
               <p className="text-neutral-900 dark:text-neutral-100 tracking-tight">
                 {post.metadata.title}
+              </p>
+            </div>
+            <div className="w-full">
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                {post.metadata.summary}
               </p>
             </div>
           </Link>

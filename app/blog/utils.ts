@@ -1,90 +1,119 @@
-import fs from "fs";
-import path from "path";
+import { getAllPosts, getPostBySlug } from "@/app/lib/db";
 
-type Metadata = {
+import { unstable_noStore as noStore } from "next/cache";
+
+export type Metadata = {
   title: string;
+
   publishedAt: string;
+
   summary: string;
+
   image?: string;
 };
 
-function parseFrontmatter(fileContent: string) {
-  let frontmatterRegex = /---\s*([\s\S]*?)\s*---/;
-  let match = frontmatterRegex.exec(fileContent);
-  let frontMatterBlock = match![1];
-  let content = fileContent.replace(frontmatterRegex, "").trim();
-  let frontMatterLines = frontMatterBlock.trim().split("\n");
-  let metadata: Partial<Metadata> = {};
+export type BlogPost = {
+  slug: string;
 
-  frontMatterLines.forEach((line) => {
-    let [key, ...valueArr] = line.split(": ");
-    let value = valueArr.join(": ").trim();
-    value = value.replace(/^['"](.*)['"]$/, "$1"); // Remove quotes
-    metadata[key.trim() as keyof Metadata] = value;
-  });
+  metadata: Metadata;
 
-  return { metadata: metadata as Metadata, content };
+  content: string;
+};
+
+export async function getBlogPosts(): Promise<BlogPost[]> {
+  noStore(); // Prevent caching
+
+  const posts = await getAllPosts();
+
+  return posts.map((post) => ({
+    slug: post.slug,
+
+    metadata: {
+      title: post.title,
+
+      publishedAt: post.published_at.toISOString(),
+
+      summary: post.summary,
+
+      image: post.image,
+    },
+
+    content: post.content,
+  }));
 }
 
-function getMDXFiles(dir) {
-  return fs.readdirSync(dir).filter((file) => path.extname(file) === ".mdx");
+export async function getBlogPost(slug: string): Promise<BlogPost | null> {
+  noStore(); // Prevent caching
+
+  const post = await getPostBySlug(slug);
+
+  if (!post) return null;
+
+  return {
+    slug: post.slug,
+
+    metadata: {
+      title: post.title,
+
+      publishedAt: post.published_at.toISOString(),
+
+      summary: post.summary,
+
+      image: post.image,
+    },
+
+    content: post.content,
+  };
 }
 
-function readMDXFile(filePath) {
-  let rawContent = fs.readFileSync(filePath, "utf-8");
-  return parseFrontmatter(rawContent);
-}
-
-function getMDXData(dir) {
-  let mdxFiles = getMDXFiles(dir);
-  return mdxFiles.map((file) => {
-    let { metadata, content } = readMDXFile(path.join(dir, file));
-    let slug = path.basename(file, path.extname(file));
-
-    return {
-      metadata,
-      slug,
-      content,
-    };
-  });
-}
-
-export function getBlogPosts() {
-  return getMDXData(path.join(process.cwd(), "app", "blog", "posts"));
-}
-
-export function formatDate(date: string, includeRelative = false) {
+export function formatDate(date: string | Date, includeRelative = false) {
   let currentDate = new Date();
-  if (!date.includes("T")) {
-    date = `${date}T00:00:00`;
-  }
-  let targetDate = new Date(date);
 
-  let yearsAgo = currentDate.getFullYear() - targetDate.getFullYear();
-  let monthsAgo = currentDate.getMonth() - targetDate.getMonth();
-  let daysAgo = currentDate.getDate() - targetDate.getDate();
+  let targetDate: Date;
 
-  let formattedDate = "";
+  if (typeof date === "string") {
+    if (!date.includes("T")) {
+      date = `${date}T00:00:00`;
+    }
 
-  if (yearsAgo > 0) {
-    formattedDate = `${yearsAgo}y ago`;
-  } else if (monthsAgo > 0) {
-    formattedDate = `${monthsAgo}mo ago`;
-  } else if (daysAgo > 0) {
-    formattedDate = `${daysAgo}d ago`;
+    targetDate = new Date(date);
+  } else if (date instanceof Date) {
+    targetDate = date;
   } else {
-    formattedDate = "Today";
+    throw new Error("Invalid date format");
   }
 
-  let fullDate = targetDate.toLocaleString("en-us", {
-    month: "long",
-    day: "numeric",
+  const formatter = new Intl.DateTimeFormat("en-US", {
     year: "numeric",
+
+    month: "long",
+
+    day: "numeric",
   });
 
-  if (!includeRelative) {
-    return fullDate;
+  const formattedDate = formatter.format(targetDate);
+
+  if (includeRelative) {
+    const timeDifference = currentDate.getTime() - targetDate.getTime();
+
+    const daysDifference = Math.floor(timeDifference / (1000 * 3600 * 24));
+
+    if (daysDifference === 0) {
+      return `Today (${formattedDate})`;
+    } else if (daysDifference === 1) {
+      return `Yesterday (${formattedDate})`;
+    } else if (daysDifference > 1 && daysDifference <= 30) {
+      return `${daysDifference} days ago (${formattedDate})`;
+    } else if (daysDifference > 30 && daysDifference <= 365) {
+      const monthsAgo = Math.floor(daysDifference / 30);
+
+      return `${monthsAgo} month${monthsAgo > 1 ? "s" : ""} ago (${formattedDate})`;
+    } else {
+      const yearsAgo = Math.floor(daysDifference / 365);
+
+      return `${yearsAgo} year${yearsAgo > 1 ? "s" : ""} ago (${formattedDate})`;
+    }
   }
 
-  return `${fullDate} (${formattedDate})`;
+  return formattedDate;
 }
