@@ -66,7 +66,7 @@ export async function Navbar() {
                   <form action={async () => {
                     "use server";
                     const { signOut } = await import("app/lib/auth");
-                    await signOut();
+                    await signOut({ redirectTo: "/" });
                   }}>
                     <Button 
                       variant="ghost" 
