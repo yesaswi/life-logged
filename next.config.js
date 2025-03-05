@@ -4,7 +4,7 @@ const nextConfig = {
   swcMinify: true,
   optimizeFonts: false, // Disable Next.js font optimization since we're using Geist
   experimental: {
-    optimizeCss: true,
+    // Removing optimizeCss as it's causing build failures
   },
 }
 
