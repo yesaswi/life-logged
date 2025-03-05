@@ -1,6 +1,6 @@
-import { getAllPosts, getPostBySlug } from "../lib/db";
-
+import { getAllPosts, getPostBySlug, getDraftPosts } from "../lib/db";
 import { unstable_noStore as noStore } from "next/cache";
+import { auth } from "../lib/auth";
 
 export type Metadata = {
   title: string;
@@ -18,6 +18,8 @@ export type BlogPost = {
   metadata: Metadata;
 
   content: string;
+
+  published: boolean;
 };
 
 export async function getBlogPosts(): Promise<BlogPost[]> {
@@ -39,6 +41,8 @@ export async function getBlogPosts(): Promise<BlogPost[]> {
     },
 
     content: post.content,
+
+    published: post.published,
   }));
 }
 
@@ -48,6 +52,14 @@ export async function getBlogPost(slug: string): Promise<BlogPost | null> {
   const post = await getPostBySlug(slug);
 
   if (!post) return null;
+  
+  // Check authentication for unpublished posts
+  const session = await auth();
+  
+  // Don't return unpublished posts to unauthenticated users
+  if (!post.published && !session) {
+    return null;
+  }
 
   return {
     slug: post.slug,
@@ -63,6 +75,8 @@ export async function getBlogPost(slug: string): Promise<BlogPost | null> {
     },
 
     content: post.content,
+
+    published: post.published,
   };
 }
 
@@ -143,4 +157,28 @@ export function formatDate(date: string | Date, includeRelative = false) {
   }
 
   return formattedDate;
+}
+
+export async function getDraftBlogPosts(): Promise<BlogPost[]> {
+  noStore(); // Prevent caching
+  
+  // Only authenticated users can access drafts
+  const session = await auth();
+  if (!session) {
+    return [];
+  }
+
+  const drafts = await getDraftPosts();
+
+  return drafts.map((post) => ({
+    slug: post.slug,
+    metadata: {
+      title: post.title,
+      publishedAt: formatDate(post.published_at),
+      summary: post.summary,
+      image: post.image,
+    },
+    content: post.content,
+    published: post.published,
+  }));
 }

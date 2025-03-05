@@ -63,3 +63,14 @@ export async function deletePost(slug: string) {
   `;
   revalidatePath("/blog");
 }
+
+export async function getDraftPosts() {
+  const { rows } = await sql`
+    SELECT slug, title, summary, published_at, content
+    FROM posts
+    WHERE published = false
+    ORDER BY published_at DESC
+  `;
+  revalidatePath("/drafts");
+  return rows;
+}

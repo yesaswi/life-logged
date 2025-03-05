@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getBlogPost, getBlogPosts, formatDate } from "../utils";
 import { CustomMDX } from "app/components/mdx";
 import { baseUrl } from "app/sitemap";
-import EditPostLink from "app/components/edit-post-link";
+import EditPostLink from "@/app/components/edit-post-link";
 
 export const dynamic = "force-dynamic";
 
@@ -96,7 +96,13 @@ export default async function BlogPost({
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           {formatDate(post.metadata.publishedAt, true)}
         </p>
-        <EditPostLink slug={post.slug} />
+        <EditPostLink 
+          slug={post.slug} 
+          title={post.metadata.title}
+          content={post.content}
+          summary={post.metadata.summary}
+          published={post.published}
+        />
       </div>
       <article className="prose dark:prose-invert">
         <CustomMDX source={post.content} />

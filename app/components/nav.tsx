@@ -33,6 +33,18 @@ export async function Navbar() {
                 </Link>
               );
             })}
+            {/* Show drafts link only for authenticated users */}
+            {session && (
+              <Link
+                href="/drafts"
+                className="transition-all hover:text-neutral-800 dark:hover:text-neutral-200 flex align-middle relative py-1 px-2"
+              >
+                <span className="flex items-center">
+                  Drafts
+                  <span className="ml-1 w-2 h-2 rounded-full bg-yellow-500"></span>
+                </span>
+              </Link>
+            )}
           </div>
           <div>
             {session ? (
