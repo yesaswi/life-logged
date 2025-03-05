@@ -1,0 +1,211 @@
+import { sql } from "@vercel/postgres";
+import { revalidatePath } from "next/cache";
+import { db } from "../../server/db";
+import { eq, desc, and, SQL } from "drizzle-orm";
+import { posts } from "../../server/db/schema";
+import { auth } from "./auth";
+
+// Legacy methods using Vercel Postgres
+export async function getAllPosts() {
+  const { rows } = await sql`
+    SELECT slug, title, summary, published_at, content
+    FROM posts
+    WHERE published = true
+    ORDER BY published_at DESC
+  `;
+  revalidatePath("/blog");
+  return rows;
+}
+
+export async function getPostBySlug(slug: string) {
+  const { rows } = await sql`
+    SELECT *
+    FROM posts
+    WHERE slug = ${slug}
+  `;
+  return rows[0];
+}
+
+export async function createPost(
+  slug: string,
+  title: string,
+  content: string,
+  summary: string,
+) {
+  const { rows } = await sql`
+    INSERT INTO posts (slug, title, content, summary, published_at, published)
+    VALUES (${slug}, ${title}, ${content}, ${summary}, CURRENT_TIMESTAMP, true)
+    RETURNING slug
+  `;
+  revalidatePath("/blog");
+  return rows[0].slug;
+}
+
+export async function updatePost(
+  slug: string,
+  title: string,
+  content: string,
+  summary: string,
+  published: boolean,
+) {
+  const { rows } = await sql`
+    UPDATE posts
+    SET title = ${title}, content = ${content}, summary = ${summary},
+        published = ${published},
+        updated_at = CURRENT_TIMESTAMP
+    WHERE slug = ${slug}
+    RETURNING slug
+  `;
+  revalidatePath(`/blog/${slug}`);
+  revalidatePath("/blog");
+  return rows[0].slug;
+}
+
+export async function deletePost(slug: string) {
+  await sql`
+    DELETE FROM posts
+    WHERE slug = ${slug}
+  `;
+  revalidatePath("/blog");
+}
+
+// New Drizzle-based methods for user posts
+export async function getUserPosts() {
+  const session = await auth();
+  
+  if (!session?.user?.id) {
+    return [];
+  }
+  
+  // Using raw SQL approach to fix type issues
+  return db.query.posts.findMany({
+    where: (posts, { eq }) => eq(posts.userId, session.user.id),
+    orderBy: (posts, { desc }) => [desc(posts.publishedAt)]
+  });
+}
+
+export async function getAllUserPosts() {
+  // Using raw SQL approach to fix type issues
+  return db.query.posts.findMany({
+    where: (posts, { eq }) => eq(posts.published, true),
+    orderBy: (posts, { desc }) => [desc(posts.publishedAt)]
+  });
+}
+
+export async function getUserPostBySlug(slug: string) {
+  const session = await auth();
+  
+  if (!session?.user?.id) {
+    // For public viewing, only return published posts
+    return db.query.posts.findFirst({
+      where: (posts, { eq, and }) => 
+        and(
+          eq(posts.slug, slug),
+          eq(posts.published, true)
+        )
+    });
+  }
+  
+  // For the author, return the post regardless of published status
+  return db.query.posts.findFirst({
+    where: (posts, { eq, and }) => 
+      and(
+        eq(posts.slug, slug),
+        eq(posts.userId, session.user.id)
+      )
+  });
+}
+
+export async function createUserPost(
+  slug: string,
+  title: string,
+  content: string,
+  summary: string,
+  published: boolean = false
+) {
+  const session = await auth();
+  
+  if (!session?.user?.id) {
+    throw new Error('You must be logged in to create a post');
+  }
+  
+  const now = new Date();
+  const publishedAt = published ? now : null;
+  
+  const result = await db.insert(posts).values({
+    userId: session.user.id,
+    slug,
+    title,
+    content,
+    summary,
+    published,
+    publishedAt,
+    updatedAt: now,
+    createdAt: now
+  }).returning({ slug: posts.slug });
+  
+  revalidatePath("/blog");
+  return result[0].slug;
+}
+
+export async function updateUserPost(
+  slug: string,
+  title: string,
+  content: string,
+  summary: string,
+  published: boolean
+) {
+  const session = await auth();
+  
+  if (!session?.user?.id) {
+    throw new Error('You must be logged in to update a post');
+  }
+  
+  const now = new Date();
+  const publishedAt = published ? new Date() : null;
+  
+  // Use a simplified approach with raw SQL to avoid type issues
+  const result = await db.update(posts)
+    .set({
+      title,
+      content,
+      summary,
+      published,
+      publishedAt: published ? (publishedAt || now) : null,
+      updatedAt: now
+    })
+    .where(
+      (eb) => eb.and(
+        eb.eq(posts.slug, slug),
+        eb.eq(posts.userId, session.user.id)
+      )
+    )
+    .returning({ slug: posts.slug });
+  
+  if (result.length === 0) {
+    throw new Error('Post not found or you do not have permission to update it');
+  }
+  
+  revalidatePath(`/blog/${slug}`);
+  revalidatePath("/blog");
+  
+  return result[0].slug;
+}
+
+export async function deleteUserPost(slug: string) {
+  const session = await auth();
+  
+  if (!session?.user?.id) {
+    throw new Error('You must be logged in to delete a post');
+  }
+  
+  await db.delete(posts)
+    .where(
+      (eb) => eb.and(
+        eb.eq(posts.slug, slug),
+        eb.eq(posts.userId, session.user.id)
+      )
+    );
+  
+  revalidatePath("/blog");
+}

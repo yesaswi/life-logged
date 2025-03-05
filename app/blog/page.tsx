@@ -1,21 +1,25 @@
+import { Suspense } from 'react';
 import { BlogPosts } from "app/components/posts";
-import Link from "next/link";
+import { AuthActions } from "app/components/blog-auth-actions";
 
 export const metadata = {
-  title: "Blog",
-  description: "Read my blog.",
+  title: 'Blog',
+  description: 'Read my thoughts on programming, life, and more.',
 };
 
 export const dynamic = "force-dynamic";
 
-export default async function Page() {
+export default function BlogPage() {
   return (
     <section>
-      <h1 className="font-semibold text-2xl mb-8 tracking-tighter">My Blog</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="font-semibold text-2xl tracking-tighter">My Blog</h1>
+        <Suspense fallback={null}>
+          <AuthActions />
+        </Suspense>
+      </div>
+      
       <BlogPosts />
-      <Link href="/blog/new" className="text-neutral-900 dark:text-neutral-100">
-        Create New Post
-      </Link>
     </section>
   );
 }
