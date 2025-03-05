@@ -8,6 +8,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import Footer from "./components/footer";
 import { auth } from "./lib/auth";
 import { SessionProvider } from "./components/auth-provider";
+import { Toaster } from "./components/ui/toaster";
 
 const baseUrl =
   process.env.NEXT_PUBLIC_BASE_URL || "https://life-logged.vercel.app";
@@ -40,8 +41,6 @@ export const metadata: Metadata = {
   },
 };
 
-const cx = (...classes) => classes.filter(Boolean).join(" ");
-
 export default async function RootLayout({
   children,
 }: {
@@ -52,21 +51,22 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={cx(
-        "text-black bg-white dark:text-white dark:bg-black",
-        GeistSans.variable,
-        GeistMono.variable,
-      )}
+      className={`${GeistSans.variable} ${GeistMono.variable} dark`}
+      suppressHydrationWarning
+      style={{ colorScheme: 'dark' }}
     >
-      <body className="antialiased max-w-xl mx-4 mt-8 lg:mx-auto">
+      <body className="min-h-screen bg-background font-sans antialiased">
         <SessionProvider session={session}>
-          <main className="flex-auto min-w-0 mt-6 flex flex-col px-2 md:px-0">
+          <div className="mx-auto max-w-2xl px-4">
             <Navbar />
-            {children}
+            <main>
+              {children}
+            </main>
             <Footer />
-            <Analytics />
-            <SpeedInsights />
-          </main>
+          </div>
+          <Toaster />
+          <Analytics />
+          <SpeedInsights />
         </SessionProvider>
       </body>
     </html>

@@ -1,6 +1,14 @@
 import Link from "next/link";
 import { auth } from "app/lib/auth";
 import { Button } from "app/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "app/components/ui/dropdown-menu";
 
 const navItems = {
   "/": {
@@ -15,19 +23,19 @@ export async function Navbar() {
   const session = await auth();
   
   return (
-    <nav className="mb-16 tracking-tight">
-      <div className="flex flex-row items-center justify-between">
-        <Link href="/" className="font-bold text-xl">
+    <nav className="py-6 border-b border-border mb-6">
+      <div className="flex justify-between items-center">
+        <Link href="/" className="font-bold text-xl tracking-tight">
           Life, Logged
         </Link>
-        <div className="flex flex-row items-center space-x-4">
-          <div className="flex flex-row space-x-0">
+        <div className="flex items-center space-x-8">
+          <div className="flex space-x-6">
             {Object.entries(navItems).map(([path, { name }]) => {
               return (
                 <Link
                   key={path}
                   href={path}
-                  className="transition-all hover:text-neutral-800 dark:hover:text-neutral-200 flex align-middle relative py-1 px-2"
+                  className="text-sm text-foreground hover:underline transition-all"
                 >
                   {name}
                 </Link>
@@ -37,7 +45,7 @@ export async function Navbar() {
             {session && (
               <Link
                 href="/drafts"
-                className="transition-all hover:text-neutral-800 dark:hover:text-neutral-200 flex align-middle relative py-1 px-2"
+                className="text-sm text-foreground hover:underline transition-all"
               >
                 <span className="flex items-center">
                   Drafts
@@ -48,30 +56,34 @@ export async function Navbar() {
           </div>
           <div>
             {session ? (
-              <div className="flex items-center space-x-2">
-                {session.user?.image && (
-                  <img 
-                    src={session.user.image} 
-                    alt={session.user.name || "Profile"} 
-                    className="w-8 h-8 rounded-full"
-                  />
-                )}
-                <form action={async () => {
-                  "use server";
-                  const { signOut } = await import("app/lib/auth");
-                  await signOut();
-                }}>
-                  <Button className="hover:text-neutral-800 text-xs h-8 px-3 rounded-md" type="submit">
-                    Sign out
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-sm font-normal">
+                    Account
                   </Button>
-                </form>
-              </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40 rounded-none">
+                  <form action={async () => {
+                    "use server";
+                    const { signOut } = await import("app/lib/auth");
+                    await signOut();
+                  }}>
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-start rounded-none text-sm font-normal h-auto py-2 px-4" 
+                      type="submit"
+                    >
+                      Sign out
+                    </Button>
+                  </form>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
-              <Link href="/login">
-                <Button className="hover:text-neutral-800 text-xs h-8 px-3 rounded-md">
+              <Button asChild variant="default" size="sm">
+                <Link href="/login">
                   Sign in
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             )}
           </div>
         </div>
