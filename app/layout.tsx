@@ -6,6 +6,8 @@ import { Navbar } from "./components/nav";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import Footer from "./components/footer";
+import { auth } from "./lib/auth";
+import { SessionProvider } from "./components/auth-provider";
 
 const baseUrl =
   process.env.NEXT_PUBLIC_BASE_URL || "https://life-logged.vercel.app";
@@ -40,11 +42,13 @@ export const metadata: Metadata = {
 
 const cx = (...classes) => classes.filter(Boolean).join(" ");
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth();
+  
   return (
     <html
       lang="en"
@@ -55,13 +59,15 @@ export default function RootLayout({
       )}
     >
       <body className="antialiased max-w-xl mx-4 mt-8 lg:mx-auto">
-        <main className="flex-auto min-w-0 mt-6 flex flex-col px-2 md:px-0">
-          <Navbar />
-          {children}
-          <Footer />
-          <Analytics />
-          <SpeedInsights />
-        </main>
+        <SessionProvider session={session}>
+          <main className="flex-auto min-w-0 mt-6 flex flex-col px-2 md:px-0">
+            <Navbar />
+            {children}
+            <Footer />
+            <Analytics />
+            <SpeedInsights />
+          </main>
+        </SessionProvider>
       </body>
     </html>
   );

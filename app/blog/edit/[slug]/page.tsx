@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { editPostAction, deletePostAction } from "@/app/actions/editPost";
+import { useSession } from "@/app/components/auth-provider";
 
 export default function EditPostPage({ params }: { params: { slug: string } }) {
   const [title, setTitle] = useState("");
@@ -17,11 +18,21 @@ export default function EditPostPage({ params }: { params: { slug: string } }) {
 
   const [error, setError] = useState("");
 
+  const [loading, setLoading] = useState(true);
+
   const router = useRouter();
 
+  const session = useSession();
+
   useEffect(() => {
+    if (session === null) {
+      router.push('/login');
+      return;
+    }
+
     async function fetchPost() {
       try {
+        setLoading(true);
         const response = await fetch(`/api/posts?slug=${params.slug}`);
 
         if (!response.ok) throw new Error("Failed to fetch post");
@@ -36,18 +47,27 @@ export default function EditPostPage({ params }: { params: { slug: string } }) {
           setSummary(post.summary);
 
           setPublished(post.published);
+          
+          if (!post.published) {
+            // Allow editing unpublished posts, but make it clear they're unpublished
+            // If you want to completely block editing, uncomment the next line:
+            // router.push('/blog');
+          }
         } else {
           setError("Post not found");
+          router.push('/blog');
         }
       } catch (error) {
         console.error("Error fetching post:", error);
 
         setError("Failed to load post. Please try again.");
+      } finally {
+        setLoading(false);
       }
     }
 
     fetchPost();
-  }, [params.slug]);
+  }, [params.slug, session, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,8 +105,21 @@ export default function EditPostPage({ params }: { params: { slug: string } }) {
     }
   };
 
+  if (loading) {
+    return <div>Loading post...</div>;
+  }
+
+  if (error) {
+    return <div className="text-red-500">{error}</div>;
+  }
+
   return (
     <div>
+      {!published && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4">
+          <p>This post is currently unpublished. It will not be visible to others until published.</p>
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <input
           type="text"
@@ -118,7 +151,6 @@ export default function EditPostPage({ params }: { params: { slug: string } }) {
           />
           <span>Published</span>
         </label>
-        {error && <p className="text-red-500">{error}</p>}
         <button type="submit" className="bg-blue-500 text-white p-2 rounded">
           Update Post
         </button>
