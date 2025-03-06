@@ -55,7 +55,7 @@ export async function Navbar() {
             )}
           </div>
           <div>
-            {session ? (
+            {session && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="text-sm font-normal">
@@ -78,12 +78,6 @@ export async function Navbar() {
                   </form>
                 </DropdownMenuContent>
               </DropdownMenu>
-            ) : (
-              <Button asChild variant="default" size="sm">
-                <Link href="/login">
-                  Sign in
-                </Link>
-              </Button>
             )}
           </div>
         </div>
