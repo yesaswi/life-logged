@@ -21,7 +21,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async signIn({ account, profile }) {
       if (account?.provider === "google") {
-        return !!profile?.email_verified;
+        // Only allow a specific email address to sign in
+        const allowedEmail = process.env.ALLOWED_EMAIL;
+        return profile?.email === allowedEmail && !!profile?.email_verified;
       }
       return true;
     },

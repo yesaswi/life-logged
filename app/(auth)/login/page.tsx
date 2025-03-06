@@ -11,8 +11,13 @@ import {
   CardTitle,
 } from "app/components/ui/card";
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: { error?: string };
+}) {
   const session = await auth();
+  const { error } = searchParams;
 
   if (session) {
     redirect("/");
@@ -24,7 +29,17 @@ export default async function LoginPage() {
         <CardHeader>
           <CardTitle className="text-2xl">Login</CardTitle>
           <CardDescription>
-            Choose your preferred sign in method
+            {!error ? (
+              "Sign in to access your private space"
+            ) : error === "AccessDenied" ? (
+              <span className="text-red-500">
+                Access restricted to authorized users only
+              </span>
+            ) : (
+              <span className="text-yellow-500">
+                An error occurred during sign in
+              </span>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -40,22 +55,24 @@ export default async function LoginPage() {
               </Button>
             </form>
           </div>
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            By clicking continue, you agree to our{" "}
-            <Link
-              href="/terms"
-              className="underline underline-offset-4 hover:text-primary"
-            >
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link
-              href="/privacy"
-              className="underline underline-offset-4 hover:text-primary"
-            >
-              Privacy Policy
-            </Link>
-          </div>
+          {!error && (
+            <div className="mt-4 text-center text-sm text-muted-foreground">
+              By clicking continue, you agree to our{" "}
+              <Link
+                href="/terms"
+                className="underline underline-offset-4 hover:text-primary"
+              >
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link
+                href="/privacy"
+                className="underline underline-offset-4 hover:text-primary"
+              >
+                Privacy Policy
+              </Link>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
